@@ -8,21 +8,28 @@ import { checkGuess } from './logic/gameLogic';
 // Importa o objeto WORDS que contém as listas de palavras por idioma
 import { WORDS } from './data/words';
 
-// Sorteia uma palavra aleatória do array de palavras em português.
-// Math.random() gera um número entre 0 e 1; multiplicado pelo tamanho
-// do array e truncado com Math.floor, produz um índice válido.
+// Sorteia uma palavra aleatória de um array de palavras.
 function pickRandomWord(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-// Palavra secreta sorteada uma vez ao carregar o módulo,
-// substituindo o valor fixo anterior ('CARRO').
-const SECRET = pickRandomWord(WORDS.pt);
-
 // Número máximo de tentativas permitidas
 const MAX_GUESSES = 6;
 
+// Metadados dos idiomas disponíveis: chave usada em WORDS e rótulo exibido no botão
+const LANGUAGES = [
+  { key: 'pt', label: 'Português' },
+  { key: 'nl', label: 'Nederlands' },
+];
+
 function App() {
+  // Idioma atual do jogo; começa em português
+  const [language, setLanguage] = useState('pt');
+
+  // Palavra secreta sorteada para a partida atual.
+  // Inicializada com uma palavra de WORDS.pt; atualizada ao trocar de idioma.
+  const [secret, setSecret] = useState(() => pickRandomWord(WORDS.pt));
+
   // Letras digitadas na tentativa atual (ainda não submetida)
   const [currentGuess, setCurrentGuess] = useState('');
 
@@ -35,6 +42,18 @@ function App() {
 
   // Estado do jogo: null = em andamento | 'won' = vitória | 'lost' = derrota
   const [gameStatus, setGameStatus] = useState(null);
+
+  // Troca o idioma e reinicia o jogo completamente:
+  // sorteia nova palavra do idioma selecionado e limpa todos os estados da partida.
+  function handleLanguageChange(lang) {
+    if (lang === language) return; // clicou no idioma já ativo, não faz nada
+    setLanguage(lang);
+    setSecret(pickRandomWord(WORDS[lang]));
+    setCurrentGuess('');
+    setGuesses([]);
+    setResults([]);
+    setGameStatus(null);
+  }
 
   // Lida com cada tecla pressionada no teclado virtual
   function handleKey(key) {
@@ -51,8 +70,8 @@ function App() {
       // Só submete se a palavra tiver exatamente 5 letras
       if (currentGuess.length !== 5) return;
 
-      // Avalia a tentativa e exibe o resultado no console
-      const result = checkGuess(currentGuess, SECRET);
+      // Avalia a tentativa contra a palavra secreta sorteada
+      const result = checkGuess(currentGuess, secret);
       console.log(result);
 
       const newGuesses = [...guesses, currentGuess];
@@ -97,6 +116,33 @@ function App() {
       paddingTop: 40,
     }}>
       <h1>Vocablo</h1>
+
+      {/* Seletor de idioma: um botão por idioma disponível em LANGUAGES.
+          O botão do idioma ativo recebe fundo escuro e texto branco;
+          os inativos ficam com fundo transparente e borda visível. */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        {LANGUAGES.map(({ key, label }) => {
+          const isActive = key === language;
+          return (
+            <button
+              key={key}
+              onClick={() => handleLanguageChange(key)}
+              style={{
+                padding: '6px 16px',
+                borderRadius: 6,
+                border: '2px solid #555',
+                cursor: isActive ? 'default' : 'pointer',
+                fontWeight: isActive ? 'bold' : 'normal',
+                backgroundColor: isActive ? '#555' : 'transparent',
+                color: isActive ? '#fff' : '#555',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Passa as tentativas e os resultados para o Grid colorir as células */}
       <Grid guesses={allGuesses} results={results} />
 
@@ -110,7 +156,7 @@ function App() {
       {/* Mensagem de derrota exibida quando o jogador esgota as tentativas */}
       {gameStatus === 'lost' && (
         <p style={{ fontSize: 20, fontWeight: 'bold', color: '#b59f3b', marginTop: 16 }}>
-          A palavra era: {SECRET}
+          A palavra era: {secret}
         </p>
       )}
 

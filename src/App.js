@@ -147,6 +147,21 @@ function App() {
   // tentativas já submetidas + tentativa atual em andamento (omitida se o jogo acabou)
   const allGuesses = gameStatus !== null ? guesses : [...guesses, currentGuess];
 
+  // Constrói um mapa { letra → melhor status } a partir de todos os resultados submetidos.
+  // A prioridade é correct > present > absent: se uma letra já apareceu como "correct",
+  // esse status nunca é rebaixado por um "present" ou "absent" de outra tentativa.
+  const STATUS_PRIORITY = { correct: 2, present: 1, absent: 0 };
+  const letterStatuses = results.reduce((acc, result) => {
+    result.forEach(({ letter, status }) => {
+      const current = acc[letter];
+      // Atualiza apenas se o novo status tiver prioridade maior que o registrado
+      if (current === undefined || STATUS_PRIORITY[status] > STATUS_PRIORITY[current]) {
+        acc[letter] = status;
+      }
+    });
+    return acc;
+  }, {});
+
   return (
     <div style={{
       display: 'flex',
@@ -155,11 +170,19 @@ function App() {
       minHeight: '100vh',
       paddingTop: 40,
     }}>
-      <h1>Vocablo</h1>
+      <h1 style={{
+        fontFamily: 'sans-serif',
+        fontSize: 42,
+        fontWeight: 700,
+        letterSpacing: '0.2em',
+        textTransform: 'uppercase',
+        color: '#5048e5',
+        margin: '0 0 20px',
+      }}>
+        Vocablo
+      </h1>
 
-      {/* Seletor de idioma: um botão por idioma disponível em LANGUAGES.
-          O botão do idioma ativo recebe fundo escuro e texto branco;
-          os inativos ficam com fundo transparente e borda visível. */}
+      {/* Seletor de idioma: ativo em roxo escuro (#5048e5), inativo em roxo claro (#ede9fe) */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         {LANGUAGES.map(({ key, label }) => {
           const isActive = key === language;
@@ -168,13 +191,13 @@ function App() {
               key={key}
               onClick={() => handleLanguageChange(key)}
               style={{
-                padding: '6px 16px',
-                borderRadius: 6,
-                border: '2px solid #555',
+                padding: '6px 18px',
+                borderRadius: 20,
+                border: 'none',
                 cursor: isActive ? 'default' : 'pointer',
-                fontWeight: isActive ? 'bold' : 'normal',
-                backgroundColor: isActive ? '#555' : 'transparent',
-                color: isActive ? '#fff' : '#555',
+                fontWeight: 'bold',
+                backgroundColor: isActive ? '#5048e5' : '#ede9fe',
+                color: isActive ? '#fff' : '#5048e5',
               }}
             >
               {label}
@@ -210,8 +233,8 @@ function App() {
             marginTop: 12,
             padding: '8px 20px',
             borderRadius: 6,
-            border: '2px solid #555',
-            backgroundColor: '#555',
+            border: 'none',
+            backgroundColor: '#5048e5',
             color: '#fff',
             fontWeight: 'bold',
             cursor: 'pointer',
@@ -221,8 +244,8 @@ function App() {
         </button>
       )}
 
-      {/* O teclado continua visível, mas handleKey bloqueia o input quando gameStatus !== null */}
-      <Keyboard onKey={handleKey} />
+      {/* Passa letterStatuses para o Keyboard colorir cada tecla conforme o melhor status conhecido */}
+      <Keyboard onKey={handleKey} letterStatuses={letterStatuses} />
     </div>
   );
 }

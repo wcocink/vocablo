@@ -1,0 +1,42 @@
+/* Reset e base dark */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: #0A0A0B;
+  color: #FAFAFA;
+  font-family: sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Hover / active para botões ─── */
+.game-btn {
+  cursor: pointer;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+.game-btn:hover  { filter: brightness(1.12); }
+.game-btn:active { transform: scale(0.96); }
+.game-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.35); outline-offset: 2px; }
+
+.lang-btn-inactive {
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+.lang-btn-inactive:hover { border-color: #71717a; color: #e4e4e7; }
+
+/* ─── Modal de vitória ─── */
+@keyframes modal-backdrop {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modal-card {
+  from { opacity: 0; transform: scale(0.93) translateY(12px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+.animate-modal-backdrop { animation: modal-backdrop 200ms ease-out both; }
+.animate-modal-card     { animation: modal-card     280ms ease-out both; }

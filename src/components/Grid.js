@@ -1,121 +1,145 @@
 import React from 'react';
+import './Grid.css';
 
-// Número de tentativas (linhas) e letras por palavra (colunas)
 const ROWS = 6;
 const COLS = 5;
 
-// Mapeia cada status para uma cor de fundo
+// Cores de destino usadas pelo keyframe `flip` via CSS custom property --bg
 const STATUS_COLORS = {
-  correct: '#538d4e', // verde: letra certa no lugar certo
-  present: '#b59f3b', // amarelo: letra certa no lugar errado
-  absent:  '#3a3a3c', // cinza escuro: letra não existe na palavra
+  correct: '#22C55E',
+  present: '#EAB308',
+  absent:  '#3F3F46',
 };
 
-// Cell representa uma única célula da grade.
-// A prop `animate` ativa a animação "pop" quando uma letra é digitada
-// na tentativa atual. Usamos `key` baseado na letra (ver Grid) para
-// forçar remontagem da célula sempre que a letra muda, fazendo a
-// animação CSS disparar do zero a cada novo caractere digitado.
-function Cell({ letter, status, animate }) {
-  // `animate` é true para células da tentativa atual com letra digitada.
-  // Três casos possíveis:
-  // 1. Tem status (tentativa submetida): cor do STATUS_COLORS, letra branca
-  // 2. Tentativa atual com letra (animate): fundo branco, borda e letra roxas
-  // 3. Vazia ou sem status: fundo branco, borda cinza
-  let backgroundColor, color, border;
+// Estilos estruturais compartilhados por todas as células
+const BASE_STYLE = {
+  width: '100%',
+  aspectRatio: '1',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 8,
+  fontFamily: 'sans-serif',
+  fontWeight: 700,
+  fontSize: 20,
+  textTransform: 'uppercase',
+  userSelect: 'none',
+};
 
+/*
+ * Cell — célula individual da grade.
+ *
+ * Casos:
+ * 1. `status` definido (tentativa submetida):
+ *    - Linha vencedora → `cell-win-reveal` (flip + pop de celebração).
+ *    - Demais          → `cell-flip`.
+ *    - Cores gerenciadas pelo keyframe via --bg (não podem ser inline).
+ * 2. `animate` true (tentativa atual com letra): borda visível + animação pop.
+ * 3. Vazia ou sem letra na tentativa atual: borda sutil, sem animação.
+ */
+function Cell({ letter, status, animate, colIndex, isWinRow }) {
   if (status) {
-    backgroundColor = STATUS_COLORS[status];
-    color  = '#ffffff';
-    border = `2px solid ${backgroundColor}`;
-  } else if (animate) {
-    backgroundColor = '#ffffff';
-    color  = '#5048e5';
-    border = '2px solid #5048e5';
-  } else {
-    backgroundColor = '#ffffff';
-    color  = '#000000';
-    border = '2px solid #d0d0d0';
+    const animClass = isWinRow ? 'cell-win-reveal' : 'cell-flip';
+    return (
+      <div
+        className={animClass}
+        style={{
+          ...BASE_STYLE,
+          '--bg':    STATUS_COLORS[status],
+          '--delay': `${colIndex * 150}ms`,
+          borderWidth: 2,
+          borderStyle: 'solid',
+        }}
+      >
+        {letter}
+      </div>
+    );
+  }
+
+  if (animate) {
+    return (
+      <div
+        className="cell-pop"
+        style={{
+          ...BASE_STYLE,
+          border: '2px solid #71717a',
+          backgroundColor: '#18181B',
+          color: '#ffffff',
+        }}
+      >
+        {letter}
+      </div>
+    );
   }
 
   return (
     <div style={{
-      width: 60,
-      height: 60,
-      border,
-      borderRadius: 6,
-      backgroundColor,
-      color,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: 'sans-serif',
-      fontSize: 22,
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      // Aplica a animação "pop" apenas quando `animate` for true
-      animation: animate ? 'pop 100ms ease-in-out' : 'none',
+      ...BASE_STYLE,
+      border: '1px solid #3f3f46',
+      backgroundColor: 'transparent',
+      color: '#d4d4d8',
     }}>
       {letter}
     </div>
   );
 }
 
-// Grid renderiza a grade completa do jogo: 6 linhas × 5 colunas
-// Recebe:
-// - guesses: array de strings com as palavras digitadas (submetidas + atual)
-// - results: array de resultados do checkGuess, um por tentativa submetida
-function Grid({ guesses = [], results = [] }) {
-  // A linha atual (sem resultado ainda) é sempre a de índice results.length:
-  // cada submissão adiciona um item a results, avançando o índice.
+/*
+ * Grid — grade 6×5 do jogo.
+ *
+ * Props:
+ * - guesses  : palavras digitadas (submetidas + atual em andamento)
+ * - results  : resultados do checkGuess, um array por tentativa submetida
+ * - shakeRow : índice da linha que deve agitar (tentativa inválida)
+ */
+function Grid({ guesses = [], results = [], shakeRow = null }) {
   const currentRowIndex = results.length;
 
   const rows = Array.from({ length: ROWS }, (_, rowIndex) => {
-    const word = guesses[rowIndex] || '';
+    const word   = guesses[rowIndex] || '';
     const result = results[rowIndex];
-
-    // Identifica se esta linha é a tentativa atual (ainda não submetida)
     const isCurrentRow = rowIndex === currentRowIndex;
+
+    // Linha vencedora: todas as letras são 'correct'
+    const isWinRow = !!(result && result.every(item => item.status === 'correct'));
 
     return {
       isCurrentRow,
+      isWinRow,
+      shouldShake: rowIndex === shakeRow,
       cells: Array.from({ length: COLS }, (_, colIndex) => ({
-        letter: word[colIndex] || '',
-        status: result ? result[colIndex].status : undefined,
-        // Anima apenas células com letra na linha atual
+        letter:  word[colIndex] || '',
+        status:  result ? result[colIndex].status : undefined,
         animate: isCurrentRow && !!(word[colIndex]),
+        colIndex,
       })),
     };
   });
 
   return (
-    <div>
-      {/* Keyframes da animação "pop": escala de 1 → 1.08 → 1 em 100ms */}
-      <style>{`
-        @keyframes pop {
-          0%   { transform: scale(1);    }
-          50%  { transform: scale(1.08); }
-          100% { transform: scale(1);    }
-        }
-      `}</style>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {rows.map(({ cells, isCurrentRow }, rowIndex) => (
-          <div key={rowIndex} style={{ display: 'flex', gap: 8 }}>
-            {cells.map(({ letter, status, animate }, colIndex) => (
-              // Usar `colIndex-letter` como key na linha atual força a remontagem
-              // da célula a cada mudança de letra, reiniciando a animação CSS.
-              // Nas demais linhas, a key fixa evita remontagens desnecessárias.
-              <Cell
-                key={isCurrentRow ? `${colIndex}-${letter}` : colIndex}
-                letter={letter}
-                status={status}
-                animate={animate}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 280 }}>
+      {rows.map(({ cells, isCurrentRow, isWinRow, shouldShake }, rowIndex) => (
+        // key com shakeRow força remontagem da div, reiniciando a animação CSS.
+        <div
+          key={shouldShake ? `shake-${rowIndex}` : rowIndex}
+          className={shouldShake ? 'row-shake' : undefined}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}
+        >
+          {cells.map(({ letter, status, animate, colIndex }) => (
+            // key dinâmica na linha atual: força remontagem ao digitar cada letra,
+            // reiniciando o pop. Quando a linha transita para "submetida", a key
+            // muda (ex: "0-A" → 0), remontando a célula e iniciando o flip.
+            <Cell
+              key={isCurrentRow ? `${colIndex}-${letter}` : colIndex}
+              letter={letter}
+              status={status}
+              animate={animate}
+              colIndex={colIndex}
+              isWinRow={isWinRow}
+            />
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

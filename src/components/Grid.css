@@ -1,0 +1,70 @@
+/* ─── Digitação ─── */
+@keyframes pop {
+  0%   { transform: scale(1);    }
+  50%  { transform: scale(1.1);  }
+  100% { transform: scale(1);    }
+}
+
+/*
+ * ─── Flip 3D (rotateX) ao revelar uma tentativa ───
+ * Gira no eixo X: a borda superior se afasta do usuário.
+ * A cor muda exatamente na metade (célula de fresta, 90°).
+ * --bg   : cor de destino definida como inline style por célula.
+ * --delay: 0 / 150 / 300 / 450 / 600ms por coluna, também inline.
+ */
+@keyframes flip {
+  0%   { transform: perspective(300px) rotateX(0deg);
+         background-color: #18181B; border-color: #3f3f46; color: #fafafa; }
+  45%  { transform: perspective(300px) rotateX(90deg);
+         background-color: #18181B; border-color: #3f3f46; color: #fafafa; }
+  55%  { transform: perspective(300px) rotateX(90deg);
+         background-color: var(--bg); border-color: var(--bg); color: #ffffff; }
+  100% { transform: perspective(300px) rotateX(0deg);
+         background-color: var(--bg); border-color: var(--bg); color: #ffffff; }
+}
+
+/* ─── Pop de celebração na linha vencedora ─── */
+@keyframes win-pop {
+  0%   { transform: scale(1);    }
+  40%  { transform: scale(1.14); }
+  70%  { transform: scale(0.95); }
+  100% { transform: scale(1);    }
+}
+
+/* ─── Shake quando a tentativa tem menos de 5 letras ─── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-7px); }
+  30%       { transform: translateX(7px); }
+  45%       { transform: translateX(-7px); }
+  60%       { transform: translateX(4px); }
+  80%       { transform: translateX(-2px); }
+}
+
+/* ─── Classes aplicadas nas células ─── */
+
+.cell-pop {
+  animation: pop 100ms ease-in-out;
+}
+
+.cell-flip {
+  animation: flip 500ms var(--delay, 0ms) ease-in-out forwards;
+}
+
+/*
+ * Linha vencedora: flip seguido de win-pop.
+ * O flip termina em delay+500ms; o pop começa em delay+650ms.
+ * Como flip anima `transform` e win-pop também, `both` preserva
+ * o estado do win-pop após o flip terminar (sem conflito de fill-mode
+ * porque os intervalos não se sobrepõem).
+ */
+.cell-win-reveal {
+  animation:
+    flip    500ms var(--delay, 0ms)                       ease-in-out forwards,
+    win-pop 400ms calc(var(--delay, 0ms) + 650ms)         ease-in-out both;
+}
+
+/* ─── Shake aplicado na div da linha ─── */
+.row-shake {
+  animation: shake 500ms ease-in-out;
+}

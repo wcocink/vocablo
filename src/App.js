@@ -1,7 +1,7 @@
 // App.js é o componente principal da aplicação
 // Ele é o ponto de entrada de toda a interface do Vocablo
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Grid from './components/Grid';
 import Keyboard from './components/Keyboard';
 import { checkGuess } from './logic/gameLogic';
@@ -55,8 +55,21 @@ function App() {
     setGameStatus(null);
   }
 
-  // Lida com cada tecla pressionada no teclado virtual
-  function handleKey(key) {
+  // Reinicia o jogo mantendo o idioma atual:
+  // sorteia uma nova palavra e limpa todos os estados da partida.
+  function resetGame() {
+    setSecret(pickRandomWord(WORDS[language]));
+    setCurrentGuess('');
+    setGuesses([]);
+    setResults([]);
+    setGameStatus(null);
+  }
+
+  // Lida com cada tecla pressionada no teclado virtual ou físico.
+  // Envolto em useCallback para que a referência só mude quando um dos estados
+  // listados em dependências mudar — necessário para o useEffect do teclado físico
+  // não reregistrar o listener a cada render.
+  const handleKey = useCallback(function (key) {
     // Bloqueia qualquer input quando o jogo já terminou (vitória ou derrota)
     if (gameStatus !== null) return;
 
@@ -101,7 +114,34 @@ function App() {
     if (currentGuess.length < 5) {
       setCurrentGuess((prev) => prev + key);
     }
-  }
+  }, [currentGuess, guesses, results, gameStatus, secret]);
+
+  // Conecta o teclado físico ao handleKey existente.
+  // useEffect registra o listener ao montar o componente e o remove ao desmontar,
+  // evitando vazamentos de memória. A dependência [handleKey] garante que o listener
+  // sempre use a versão mais recente da função (que fecha sobre os estados atuais).
+  useEffect(() => {
+    function onKeyDown(e) {
+      // Ignora teclas com modificadores (Ctrl, Alt, Meta) para não capturar
+      // atalhos do navegador como Ctrl+R ou Alt+F4.
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      if (e.key === 'Enter') {
+        handleKey('ENTER');
+      } else if (e.key === 'Backspace') {
+        handleKey('⌫');
+      } else if (/^[a-zA-Z]$/.test(e.key)) {
+        // Normaliza para maiúsculo, igual ao teclado virtual
+        handleKey(e.key.toUpperCase());
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+
+    // Função de limpeza: remove o listener quando o componente for desmontado
+    // ou antes de registrar um novo listener no próximo render.
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [handleKey]);
 
   // Monta o array de palavras exibido no Grid:
   // tentativas já submetidas + tentativa atual em andamento (omitida se o jogo acabou)
@@ -158,6 +198,27 @@ function App() {
         <p style={{ fontSize: 20, fontWeight: 'bold', color: '#b59f3b', marginTop: 16 }}>
           A palavra era: {secret}
         </p>
+      )}
+
+      {/* Botão "Jogar novamente" exibido apenas ao fim do jogo (vitória ou derrota).
+          Ao clicar, chama resetGame: sorteia nova palavra do idioma atual
+          e limpa tentativas, resultados e status. */}
+      {gameStatus !== null && (
+        <button
+          onClick={resetGame}
+          style={{
+            marginTop: 12,
+            padding: '8px 20px',
+            borderRadius: 6,
+            border: '2px solid #555',
+            backgroundColor: '#555',
+            color: '#fff',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+          }}
+        >
+          Jogar novamente
+        </button>
       )}
 
       {/* O teclado continua visível, mas handleKey bloqueia o input quando gameStatus !== null */}

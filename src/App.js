@@ -187,7 +187,7 @@ function App() {
       return next;
     });
     if (selectedCol < 4) setSelectedCol(s => s + 1);
-  }, [currentGuess, selectedCol, guesses, results, gameStatus, secret]);
+  }, [currentGuess, selectedCol, guesses, results, gameStatus, secret, language]);
 
   useEffect(() => {
     function onKeyDown(e) {

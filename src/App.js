@@ -54,6 +54,7 @@ function App() {
   const [results,      setResults]      = useState([]);
   const [gameStatus,   setGameStatus]   = useState(null);
   const [shakeRow,     setShakeRow]     = useState(null);
+  const [copied,       setCopied]       = useState(false);
 
   function handleLanguageChange(lang) {
     if (lang === language) return;
@@ -75,6 +76,46 @@ function App() {
     setResults([]);
     setGameStatus(null);
     setShakeRow(null);
+  }
+
+  /*
+   * handleShare — gera o texto de compartilhamento e copia para o clipboard.
+   *
+   * Formato:
+   *   VOCABLO 15/04/2026
+   *   3/6            ← número de tentativas (ou X/6 se perdeu)
+   *
+   *   🟩🟨⬛⬛⬛    ← uma linha de emojis por tentativa submetida
+   *   ...
+   *
+   * Mapeamento de status → emoji:
+   *   correct → 🟩 | present → 🟨 | absent → ⬛
+   *
+   * Após copiar, exibe "Copiado!" por 2 segundos via estado `copied`.
+   */
+  function handleShare() {
+    const now     = new Date();
+    const day     = String(now.getDate()).padStart(2, '0');
+    const month   = String(now.getMonth() + 1).padStart(2, '0');
+    const year    = now.getFullYear();
+    const dateStr = `${day}/${month}/${year}`;
+
+    const EMOJI = { correct: '🟩', present: '🟨', absent: '⬛' };
+
+    // Converte cada resultado em uma linha de emojis
+    const emojiGrid = results
+      .map(row => row.map(({ status }) => EMOJI[status]).join(''))
+      .join('\n');
+
+    // "X/6" se perdeu, "n/6" se ganhou
+    const attempts = gameStatus === 'lost' ? 'X' : guesses.length;
+
+    const text = `VOCABLO ${dateStr}\n${attempts}/6\n\n${emojiGrid}`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
 
   const handleKey = useCallback(function (key) {
@@ -237,6 +278,25 @@ function App() {
             >
               Jogar novamente
             </button>
+
+            {/* Botão de compartilhar: mesmo shape do "Jogar novamente", cor neutra */}
+            <button
+              onClick={handleShare}
+              className="game-btn"
+              style={{
+                width: '100%',
+                backgroundColor: '#3F3F46',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: 16,
+                padding: '12px 24px',
+                borderRadius: 12,
+                border: 'none',
+                marginTop: 8,
+              }}
+            >
+              {copied ? 'Copiado!' : 'Compartilhar'}
+            </button>
           </div>
         </div>
       )}
@@ -321,6 +381,23 @@ function App() {
             }}
           >
             Jogar novamente
+          </button>
+
+          {/* Botão de compartilhar na derrota */}
+          <button
+            onClick={handleShare}
+            className="game-btn"
+            style={{
+              backgroundColor: '#3F3F46',
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: 15,
+              padding: '10px 32px',
+              borderRadius: 12,
+              border: 'none',
+            }}
+          >
+            {copied ? 'Copiado!' : 'Compartilhar'}
           </button>
         </div>
       )}

@@ -4,11 +4,39 @@ import Keyboard from './components/Keyboard';
 import { checkGuess } from './logic/gameLogic';
 import { WORDS } from './data/words';
 
-function pickRandomWord(list) {
-  return list[Math.floor(Math.random() * list.length)];
+/*
+ * getDailyWord — escolhe deterministicamente a palavra do dia.
+ *
+ * A lógica:
+ * 1. Converte a data atual em um número inteiro: YYYYMMDD (ex: 20260415).
+ *    Isso garante que o seed muda exatamente uma vez por dia.
+ * 2. Calcula um hash simples do código do idioma somando os char codes
+ *    de cada caractere (ex: "pt" → 112 + 116 = 228).
+ *    Isso faz com que idiomas diferentes produzam palavras diferentes
+ *    para a mesma data, sem precisar de listas separadas de índices.
+ * 3. Soma dateSeed + langHash e aplica módulo pelo tamanho da lista
+ *    para obter um índice sempre válido e repetível.
+ */
+function getDailyWord(wordList, language) {
+  const now   = new Date();
+  const year  = now.getFullYear();
+  const month = now.getMonth() + 1; // getMonth() retorna 0–11
+  const day   = now.getDate();
+
+  // Seed numérico baseado na data (ex: 20260415)
+  const dateSeed = year * 10000 + month * 100 + day;
+
+  // Influência do idioma: soma dos char codes (ex: "pt" → 228, "nl" → 220)
+  const langHash = language.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+
+  // Índice determinístico: mesmo dia + idioma → sempre a mesma palavra
+  const index = (dateSeed + langHash) % wordList.length;
+
+  return wordList[index];
 }
 
 const MAX_GUESSES = 6;
+const EMPTY_GUESS  = ['', '', '', '', ''];
 
 const LANGUAGES = [
   { key: 'pt', label: 'Português' },
@@ -19,20 +47,20 @@ const STATUS_PRIORITY = { correct: 2, present: 1, absent: 0 };
 
 function App() {
   const [language,     setLanguage]     = useState('pt');
-  const [secret,       setSecret]       = useState(() => pickRandomWord(WORDS.pt));
-  const [currentGuess, setCurrentGuess] = useState('');
+  const [secret,       setSecret]       = useState(() => getDailyWord(WORDS.pt, 'pt'));
+  const [currentGuess, setCurrentGuess] = useState([...EMPTY_GUESS]);
+  const [selectedCol,  setSelectedCol]  = useState(0);
   const [guesses,      setGuesses]      = useState([]);
   const [results,      setResults]      = useState([]);
   const [gameStatus,   setGameStatus]   = useState(null);
-
-  // Índice da linha que deve agitar quando o jogador tenta submeter com < 5 letras
-  const [shakeRow, setShakeRow] = useState(null);
+  const [shakeRow,     setShakeRow]     = useState(null);
 
   function handleLanguageChange(lang) {
     if (lang === language) return;
     setLanguage(lang);
-    setSecret(pickRandomWord(WORDS[lang]));
-    setCurrentGuess('');
+    setSecret(getDailyWord(WORDS[lang], lang));
+    setCurrentGuess([...EMPTY_GUESS]);
+    setSelectedCol(0);
     setGuesses([]);
     setResults([]);
     setGameStatus(null);
@@ -40,8 +68,9 @@ function App() {
   }
 
   function resetGame() {
-    setSecret(pickRandomWord(WORDS[language]));
-    setCurrentGuess('');
+    setSecret(getDailyWord(WORDS[language], language));
+    setCurrentGuess([...EMPTY_GUESS]);
+    setSelectedCol(0);
     setGuesses([]);
     setResults([]);
     setGameStatus(null);
@@ -52,26 +81,51 @@ function App() {
     if (gameStatus !== null) return;
 
     if (key === '⌫') {
-      setCurrentGuess(prev => prev.slice(0, -1));
+      setCurrentGuess(prev => {
+        const next = [...prev];
+        if (next[selectedCol] !== '') {
+          // Limpa a célula focada
+          next[selectedCol] = '';
+        } else if (selectedCol > 0) {
+          // Célula já vazia: recua e limpa a anterior
+          next[selectedCol - 1] = '';
+          setSelectedCol(s => s - 1);
+        }
+        return next;
+      });
       return;
     }
 
     if (key === 'ENTER') {
-      if (currentGuess.length !== 5) {
-        // Anima a linha atual com shake para indicar tentativa inválida
+      // Rejeita se alguma célula ainda estiver vazia
+      if (!currentGuess.every(c => c !== '')) {
         const row = guesses.length;
         setShakeRow(row);
         setTimeout(() => setShakeRow(null), 600);
         return;
       }
 
-      const result = checkGuess(currentGuess, secret);
-      const newGuesses = [...guesses, currentGuess];
+      const word = currentGuess.join('');
+
+      /*
+       * Validação de dicionário: verifica se a palavra existe em WORDS[language].
+       * A busca usa o idioma atual, então funciona para qualquer idioma presente
+       * em WORDS (pt, nl, etc.) sem nenhuma adaptação extra.
+       * Se a palavra não for encontrada, agita a linha e interrompe a submissão.
+       */
+      if (!WORDS[language].includes(word)) {
+        setShakeRow(guesses.length);
+        setTimeout(() => setShakeRow(null), 600);
+        return;
+      }
+      const result  = checkGuess(word, secret);
+      const newGuesses = [...guesses, word];
       const newResults = [...results, result];
 
       setGuesses(newGuesses);
       setResults(newResults);
-      setCurrentGuess('');
+      setCurrentGuess([...EMPTY_GUESS]);
+      setSelectedCol(0);
 
       if (result.every(item => item.status === 'correct')) {
         setGameStatus('won');
@@ -85,10 +139,14 @@ function App() {
       return;
     }
 
-    if (currentGuess.length < 5) {
-      setCurrentGuess(prev => prev + key);
-    }
-  }, [currentGuess, guesses, results, gameStatus, secret]);
+    // Letra: preenche a célula focada e avança o cursor
+    setCurrentGuess(prev => {
+      const next = [...prev];
+      next[selectedCol] = key;
+      return next;
+    });
+    if (selectedCol < 4) setSelectedCol(s => s + 1);
+  }, [currentGuess, selectedCol, guesses, results, gameStatus, secret]);
 
   useEffect(() => {
     function onKeyDown(e) {
@@ -101,6 +159,7 @@ function App() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [handleKey]);
 
+  // Para o Grid: linha atual como array (funciona com word[colIndex])
   const allGuesses = gameStatus !== null ? guesses : [...guesses, currentGuess];
 
   // Mapa { letra → melhor status } para colorir as teclas do teclado
@@ -186,9 +245,10 @@ function App() {
       <h1 style={{
         fontSize: 42,
         fontWeight: 700,
+        fontFamily: 'sans-serif',
         letterSpacing: '0.2em',
         textTransform: 'uppercase',
-        color: '#ffffff',
+        color: '#7C3AED',
         margin: 0,
       }}>
         VOCABLO
@@ -230,7 +290,13 @@ function App() {
       </div>
 
       {/* ── Grade ── */}
-      <Grid guesses={allGuesses} results={results} shakeRow={shakeRow} />
+      <Grid
+        guesses={allGuesses}
+        results={results}
+        shakeRow={shakeRow}
+        selectedCol={gameStatus === null ? selectedCol : null}
+        onCellClick={gameStatus === null ? setSelectedCol : undefined}
+      />
 
       {/* ── Mensagem de derrota ── */}
       {gameStatus === 'lost' && (

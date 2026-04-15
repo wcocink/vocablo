@@ -1,17 +1,14 @@
 import React from 'react';
-import './Grid.css';
 
 const ROWS = 6;
 const COLS = 5;
 
-// Cores de destino usadas pelo keyframe `flip` via CSS custom property --bg
 const STATUS_COLORS = {
   correct: '#22C55E',
   present: '#EAB308',
   absent:  '#3F3F46',
 };
 
-// Estilos estruturais compartilhados por todas as células
 const BASE_STYLE = {
   width: '100%',
   aspectRatio: '1',
@@ -30,14 +27,15 @@ const BASE_STYLE = {
  * Cell — célula individual da grade.
  *
  * Casos:
- * 1. `status` definido (tentativa submetida):
- *    - Linha vencedora → `cell-win-reveal` (flip + pop de celebração).
- *    - Demais          → `cell-flip`.
- *    - Cores gerenciadas pelo keyframe via --bg (não podem ser inline).
- * 2. `animate` true (tentativa atual com letra): borda visível + animação pop.
- * 3. Vazia ou sem letra na tentativa atual: borda sutil, sem animação.
+ * 1. `status` definido (tentativa submetida): flip/win-reveal animation.
+ * 2. `isCurrentRow` true: célula clicável da linha em andamento.
+ *    - `isSelected` true: borda branca indicando foco.
+ *    - Com letra: fundo secundário + animação pop ao digitar.
+ *    - Sem letra: fundo transparente.
+ * 3. Linha futura: borda sutil #3F3F46, sem interação.
  */
-function Cell({ letter, status, animate, colIndex, isWinRow }) {
+function Cell({ letter, status, animate, colIndex, isWinRow, isCurrentRow, isSelected, onClick }) {
+  // Célula submetida
   if (status) {
     const animClass = isWinRow ? 'cell-win-reveal' : 'cell-flip';
     return (
@@ -56,28 +54,32 @@ function Cell({ letter, status, animate, colIndex, isWinRow }) {
     );
   }
 
-  if (animate) {
+  // Célula da linha atual (clicável)
+  if (isCurrentRow) {
     return (
       <div
-        className="cell-pop"
+        className={animate ? 'cell-pop' : undefined}
         style={{
           ...BASE_STYLE,
-          border: '2px solid #71717a',
-          backgroundColor: '#18181B',
-          color: '#ffffff',
+          border: isSelected ? '2px solid #FAFAFA' : '1px solid #3F3F46',
+          backgroundColor: letter ? '#18181B' : 'transparent',
+          color: '#FAFAFA',
+          cursor: 'pointer',
         }}
+        onClick={onClick}
       >
         {letter}
       </div>
     );
   }
 
+  // Célula de linha futura
   return (
     <div style={{
       ...BASE_STYLE,
-      border: '1px solid #3f3f46',
+      border: '1px solid #3F3F46',
       backgroundColor: 'transparent',
-      color: '#d4d4d8',
+      color: '#FAFAFA',
     }}>
       {letter}
     </div>
@@ -88,47 +90,45 @@ function Cell({ letter, status, animate, colIndex, isWinRow }) {
  * Grid — grade 6×5 do jogo.
  *
  * Props:
- * - guesses  : palavras digitadas (submetidas + atual em andamento)
- * - results  : resultados do checkGuess, um array por tentativa submetida
- * - shakeRow : índice da linha que deve agitar (tentativa inválida)
+ * - guesses     : palavras digitadas (submetidas + linha atual como array)
+ * - results     : resultados do checkGuess, um array por tentativa submetida
+ * - shakeRow    : índice da linha que deve agitar (tentativa inválida)
+ * - selectedCol : coluna focada na linha atual (null quando jogo encerrado)
+ * - onCellClick : callback(colIndex) chamado ao clicar numa célula da linha atual
  */
-function Grid({ guesses = [], results = [], shakeRow = null }) {
+function Grid({ guesses = [], results = [], shakeRow = null, selectedCol = null, onCellClick }) {
   const currentRowIndex = results.length;
 
   const rows = Array.from({ length: ROWS }, (_, rowIndex) => {
-    const word   = guesses[rowIndex] || '';
-    const result = results[rowIndex];
-    const isCurrentRow = rowIndex === currentRowIndex;
-
-    // Linha vencedora: todas as letras são 'correct'
-    const isWinRow = !!(result && result.every(item => item.status === 'correct'));
+    const word        = guesses[rowIndex] || '';
+    const result      = results[rowIndex];
+    const isCurrentRow = rowIndex === currentRowIndex && onCellClick !== undefined;
+    const isWinRow    = !!(result && result.every(item => item.status === 'correct'));
 
     return {
       isCurrentRow,
       isWinRow,
       shouldShake: rowIndex === shakeRow,
       cells: Array.from({ length: COLS }, (_, colIndex) => ({
-        letter:  word[colIndex] || '',
-        status:  result ? result[colIndex].status : undefined,
-        animate: isCurrentRow && !!(word[colIndex]),
+        letter:     word[colIndex] || '',
+        status:     result ? result[colIndex].status : undefined,
+        animate:    isCurrentRow && !!(word[colIndex]),
+        isCurrentRow,
+        isSelected: isCurrentRow && colIndex === selectedCol,
         colIndex,
       })),
     };
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 280 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 360 }}>
       {rows.map(({ cells, isCurrentRow, isWinRow, shouldShake }, rowIndex) => (
-        // key com shakeRow força remontagem da div, reiniciando a animação CSS.
         <div
           key={shouldShake ? `shake-${rowIndex}` : rowIndex}
           className={shouldShake ? 'row-shake' : undefined}
           style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}
         >
-          {cells.map(({ letter, status, animate, colIndex }) => (
-            // key dinâmica na linha atual: força remontagem ao digitar cada letra,
-            // reiniciando o pop. Quando a linha transita para "submetida", a key
-            // muda (ex: "0-A" → 0), remontando a célula e iniciando o flip.
+          {cells.map(({ letter, status, animate, isCurrentRow, isSelected, colIndex }) => (
             <Cell
               key={isCurrentRow ? `${colIndex}-${letter}` : colIndex}
               letter={letter}
@@ -136,6 +136,9 @@ function Grid({ guesses = [], results = [], shakeRow = null }) {
               animate={animate}
               colIndex={colIndex}
               isWinRow={isWinRow}
+              isCurrentRow={isCurrentRow}
+              isSelected={isSelected}
+              onClick={isCurrentRow ? () => onCellClick(colIndex) : undefined}
             />
           ))}
         </div>

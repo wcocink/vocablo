@@ -28,7 +28,7 @@ function Key({ label, onKey, status }) {
   // Cor baseada no status; cinza escuro por padrão (tecla não usada)
   const { backgroundColor, color } = STATUS_STYLES[status] || {
     backgroundColor: '#27272A',
-    color: '#FAFAFA',
+    color: '#A1A1AA',
   };
 
   return (
@@ -71,11 +71,13 @@ function Keyboard({ onKey = () => {}, letterStatuses = {} }) {
       style={{
         width: '100%',
         maxWidth: 500,
-        padding: '0 8px',
+        padding: '12px 8px',
         display: 'flex',
         flexDirection: 'column',
         gap: 4,
         marginTop: 8,
+        backgroundColor: '#18181B',
+        borderRadius: 12,
       }}
     >
       {ROWS.map((row, rowIndex) => (

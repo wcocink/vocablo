@@ -40,7 +40,7 @@ function Cell({ letter, status, animate, colIndex, isWinRow, isCurrentRow, isSel
     const animClass = isWinRow ? 'cell-win-reveal' : 'cell-flip';
     return (
       <div
-        className={animClass}
+        className={`grid-cell ${animClass}`}
         style={{
           ...BASE_STYLE,
           '--bg':    STATUS_COLORS[status],
@@ -58,7 +58,7 @@ function Cell({ letter, status, animate, colIndex, isWinRow, isCurrentRow, isSel
   if (isCurrentRow) {
     return (
       <div
-        className={animate ? 'cell-pop' : undefined}
+        className={`grid-cell${animate ? ' cell-pop' : ''}`}
         style={{
           ...BASE_STYLE,
           border: isSelected ? '2px solid #FAFAFA' : '1px solid #3F3F46',
@@ -75,7 +75,7 @@ function Cell({ letter, status, animate, colIndex, isWinRow, isCurrentRow, isSel
 
   // Célula de linha futura
   return (
-    <div style={{
+    <div className="grid-cell" style={{
       ...BASE_STYLE,
       border: '1px solid #3F3F46',
       backgroundColor: 'transparent',
@@ -121,11 +121,11 @@ function Grid({ guesses = [], results = [], shakeRow = null, selectedCol = null,
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 360 }}>
+    <div className="grid-container" style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 360 }}>
       {rows.map(({ cells, isCurrentRow, isWinRow, shouldShake }, rowIndex) => (
         <div
           key={shouldShake ? `shake-${rowIndex}` : rowIndex}
-          className={shouldShake ? 'row-shake' : undefined}
+          className={`grid-row${shouldShake ? ' row-shake' : ''}`}
           style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}
         >
           {cells.map(({ letter, status, animate, isCurrentRow, isSelected, colIndex }) => (

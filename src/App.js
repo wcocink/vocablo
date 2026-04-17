@@ -215,7 +215,7 @@ function App() {
   }, {});
 
   return (
-    <div style={{
+    <div className="app-container" style={{
       minHeight: '100vh',
       backgroundColor: '#0A0A0B',
       display: 'flex',
@@ -302,7 +302,7 @@ function App() {
       )}
 
       {/* ── Título ── */}
-      <h1 style={{
+      <h1 className="app-title" style={{
         fontSize: 42,
         fontWeight: 700,
         fontFamily: 'sans-serif',

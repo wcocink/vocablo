@@ -1,3 +1,42 @@
+/* ─── Responsive ─── */
+@media (max-width: 600px) {
+  .app-container {
+    height: 100vh !important;
+    min-height: unset !important;
+    overflow: hidden !important;
+    padding: 8px !important;
+    gap: 6px !important;
+  }
+
+  .app-title {
+    font-size: 32px !important;
+  }
+
+  .grid-container {
+    gap: 5px !important;
+  }
+
+  .grid-row {
+    grid-template-columns: repeat(5, 50px) !important;
+    gap: 5px !important;
+    justify-content: center;
+  }
+
+  .grid-cell {
+    font-size: 22px !important;
+  }
+
+  .keyboard-container {
+    padding: 8px !important;
+    margin-top: 0 !important;
+  }
+
+  .keyboard-key {
+    min-height: 40px !important;
+    font-size: 11px !important;
+  }
+}
+
 /* ─── Design Tokens ─── */
 :root {
   --color-bg:           #0A0A0B;

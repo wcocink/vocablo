@@ -36,7 +36,7 @@ function Key({ label, onKey, status }) {
       onClick={() => onKey(label)}
       aria-label={label}
       aria-pressed={!!status}
-      className="game-btn"
+      className="game-btn keyboard-key"
       style={{
         flex: isWide ? 1.5 : 1,
         minHeight: 48,
@@ -66,6 +66,7 @@ function Key({ label, onKey, status }) {
 function Keyboard({ onKey = () => {}, letterStatuses = {} }) {
   return (
     <div
+      className="keyboard-container"
       role="group"
       aria-label="Teclado virtual"
       style={{
